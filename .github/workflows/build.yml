@@ -1,0 +1,110 @@
+name: Build Firmware
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install ESPHome
+      run: |
+        pip install esphome
+        
+    - name: Create secrets file
+      run: |
+        cat > secrets.yaml << EOF
+        wifi_ssid: "placeholder"
+        wifi_password: "placeholder"
+        ap_password: "placeholder12345"
+        api_encryption_key: "$(openssl rand -base64 32)"
+        ota_password: "placeholder"
+        EOF
+        
+    - name: Validate configuration
+      run: |
+        esphome config s3-mini-voice-satellite.yaml
+        
+    - name: Build firmware
+      run: |
+        esphome compile s3-mini-voice-satellite.yaml
+        
+    - name: Create factory binary
+      run: |
+        mkdir -p web-installer/firmware
+        # Merge bootloader, partitions, and firmware into factory binary
+        python -m esphome merge-bin \
+          --output web-installer/firmware/s3-mini-voice-satellite-factory.bin \
+          .esphome/build/s3-mini-voice-satellite/.pioenvs/s3-mini-voice-satellite/firmware.bin
+        
+    - name: Copy firmware files
+      run: |
+        cp .esphome/build/s3-mini-voice-satellite/.pioenvs/s3-mini-voice-satellite/firmware.bin \
+           web-installer/firmware/s3-mini-voice-satellite.bin
+        
+    - name: Upload firmware artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware
+        path: |
+          web-installer/firmware/*.bin
+          
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          web-installer/firmware/*.bin
+        body: |
+          ## S3 Mini Voice Satellite ${{ github.ref_name }}
+          
+          ### Installation
+          
+          **Web Installer (Recommended):**
+          Visit https://YOUR-USERNAME.github.io/S3-Mini-Voice-Satellite/
+          
+          **Manual Installation:**
+          1. Download `s3-mini-voice-satellite-factory.bin`
+          2. Flash using esptool: 
+             ```
+             esptool.py write_flash 0x0 s3-mini-voice-satellite-factory.bin
+             ```
+          
+          ### What's Changed
+          
+          See [CHANGELOG.md](CHANGELOG.md) for details.
+          
+          ### First Time Setup
+          
+          1. Connect your ESP32-S3 Mini via USB
+          2. Flash the firmware
+          3. Connect to the "S3 Mini Voice Satellite Fallback" WiFi
+          4. Configure your WiFi credentials
+          5. Add to Home Assistant
+          
+          For detailed instructions, see the [README](README.md).
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,18 @@
+{
+  "name": "S3 Mini Voice Satellite",
+  "version": "1.0.0",
+  "home_assistant_domain": "esphome",
+  "new_install_skip_erase": false,
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        {
+          "path": "firmware/s3-mini-voice-satellite-factory.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}
