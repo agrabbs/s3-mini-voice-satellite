@@ -125,8 +125,8 @@ For advanced users who want to customize the configuration.
 
 1. **Copy Configuration Files**
    ```bash
-   git clone https://github.com/YOUR-USERNAME/S3-Mini-Voice-Satellite.git
-   cd S3-Mini-Voice-Satellite
+   git clone https://github.com/agrabbs/s3-mini-voice-satellite
+   cd s3-mini-voice-satellite
    cp secrets.yaml.example secrets.yaml
    ```
 
